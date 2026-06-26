@@ -25,7 +25,7 @@ class OpenAICompatibleClient(LLMClient):
     """OpenAI兼容API客户端（支持qwen3.7-plus等）"""
     
     def __init__(self, api_key: str, base_url: str, model: str,
-                 timeout: int = 30, retry: int = 3):
+                 timeout: int = 120, retry: int = 3):
         self.api_key = api_key
         self.base_url = base_url.rstrip('/')
         self.model = model
