@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>试卷助手</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; color: white; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header p { font-size: 1.1em; opacity: 0.9; }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group textarea,
+        .form-group input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: monospace;
+        }
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #666;
+        }
+        .question-config {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .config-item {
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+        .config-item h4 { margin-bottom: 10px; color: #333; }
+        .config-item input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        .btn-primary:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #5a6268; }
+        .loading { display: none; text-align: center; padding: 20px; }
+        .loading.active { display: block; }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result { display: none; }
+        .result.active { display: block; }
+        .preview-section { margin-bottom: 20px; }
+        .preview-section h3 { margin-bottom: 10px; color: #333; }
+        .preview-content {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 6px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-item {
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .stat-item .value { font-size: 2em; font-weight: bold; }
+        .stat-item .label { font-size: 0.9em; opacity: 0.9; }
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c33;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        .button-group { display: flex; gap: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 试卷助手</h1>
+            <p>AI智能出题系统</p>
+        </div>
+        
+        <div class="card">
+            <h2>1. 输入知识点</h2>
+            <div class="form-group">
+                <label>方式一：上传文档（支持PDF/DOC/TXT）</label>
+                <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt">
+                <div id="fileInfo" class="file-info" style="display: none;"></div>
+            </div>
+            <div class="form-group">
+                <label>方式二：手动输入（每行一个知识点）</label>
+                <textarea id="knowledgePoints" placeholder="Python基础语法&#10;变量和数据类型&#10;条件语句&#10;循环语句&#10;函数定义和调用"></textarea>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>2. 配置试卷</h2>
+            <div class="form-group">
+                <label>总分</label>
+                <input type="number" id="totalScore" value="100" min="1">
+            </div>
+            <div class="form-group">
+                <label>题型配置</label>
+                <div class="question-config">
+                    <div class="config-item">
+                        <h4>单选题</h4>
+                        <input type="number" id="singleCount" value="5" min="0" placeholder="题数">
+                        <input type="number" id="singleScore" value="2" min="1" placeholder="每题分值">
+                    </div>
+                    <div class="config-item">
+                        <h4>判断题</h4>
+                        <input type="number" id="judgeCount" value="5" min="0" placeholder="题数">
+                        <input type="number" id="judgeScore" value="1" min="1" placeholder="每题分值">
+                    </div>
+                    <div class="config-item">
+                        <h4>简答题</h4>
+                        <input type="number" id="shortCount" value="2" min="0" placeholder="题数">
+                        <input type="number" id="shortScore" value="10" min="1" placeholder="每题分值">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <button id="generateBtn" class="btn btn-primary">生成试卷</button>
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>正在生成试卷，请稍候...</p>
+            </div>
+            <div id="error" class="error" style="display: none;"></div>
+            <div id="warning" class="warning" style="display: none;"></div>
+        </div>
+        
+        <div id="result" class="card result">
+            <h2>3. 生成结果</h2>
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="value" id="statTotal">0</div>
+                    <div class="label">总分</div>
+                </div>
+                <div class="stat-item">
+                    <div class="value" id="statCoverage">0%</div>
+                    <div class="label">知识点覆盖率</div>
+                </div>
+                <div class="stat-item">
+                    <div class="value" id="statQuestions">0</div>
+                    <div class="label">题目数量</div>
+                </div>
+            </div>
+            <div class="preview-section">
+                <h3>试卷预览</h3>
+                <div id="examPreview" class="preview-content"></div>
+            </div>
+            <div class="preview-section">
+                <h3>答案预览</h3>
+                <div id="answerPreview" class="preview-content"></div>
+            </div>
+            <div class="button-group">
+                <button id="downloadExamBtn" class="btn btn-primary">下载试卷</button>
+                <button id="downloadAnswerBtn" class="btn btn-secondary">下载答案</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let examFile = '';
+        let answerFile = '';
+        
+        // 文件上传处理
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const fileInfo = document.getElementById('fileInfo');
+            fileInfo.style.display = 'block';
+            fileInfo.textContent = '正在解析: ' + file.name + '...';
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    fileInfo.textContent = '✅ 解析成功: ' + file.name + ' (' + data.count + '个知识点)';
+                    document.getElementById('knowledgePoints').value = data.points.join('\n');
+                } else {
+                    fileInfo.textContent = '❌ 解析失败: ' + data.error;
+                }
+            } catch (error) {
+                fileInfo.textContent = '❌ 上传失败: ' + error.message;
+            }
+        });
+        
+        // 生成试卷
+        document.getElementById('generateBtn').addEventListener('click', async () => {
+            const knowledgePoints = document.getElementById('knowledgePoints').value.trim();
+            if (!knowledgePoints) {
+                showError('请输入知识点');
+                return;
+            }
+            
+            const points = knowledgePoints.split('\n').filter(p => p.trim());
+            const totalScore = parseInt(document.getElementById('totalScore').value) || 100;
+            
+            const questionConfig = [
+                {
+                    type: 'single_choice',
+                    count: parseInt(document.getElementById('singleCount').value) || 0,
+                    score_per_question: parseInt(document.getElementById('singleScore').value) || 2
+                },
+                {
+                    type: 'true_false',
+                    count: parseInt(document.getElementById('judgeCount').value) || 0,
+                    score_per_question: parseInt(document.getElementById('judgeScore').value) || 1
+                },
+                {
+                    type: 'short_answer',
+                    count: parseInt(document.getElementById('shortCount').value) || 0,
+                    score_per_question: parseInt(document.getElementById('shortScore').value) || 10
+                }
+            ].filter(q => q.count > 0);
+            
+            // 显示loading
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('generateBtn').disabled = true;
+            hideError();
+            hideWarning();
+            document.getElementById('result').classList.remove('active');
+            
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        knowledge_points: points,
+                        total_score: totalScore,
+                        question_config: questionConfig
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showResult(data);
+                } else {
+                    showError(data.error + (data.details ? ': ' + data.details.join(', ') : ''));
+                }
+            } catch (error) {
+                showError('生成失败: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('generateBtn').disabled = false;
+            }
+        });
+        
+        // 显示结果
+        function showResult(data) {
+            examFile = data.exam_file.split('\\').pop().split('/').pop();
+            answerFile = data.answer_file.split('\\').pop().split('/').pop();
+            
+            // 统计信息
+            document.getElementById('statTotal').textContent = document.getElementById('totalScore').value;
+            document.getElementById('statCoverage').textContent = Math.round(data.coverage.coverage_rate * 100) + '%';
+            document.getElementById('statQuestions').textContent = data.exam_content.split('\n').filter(l => l.match(/^\d+\./)).length;
+            
+            // 预览
+            document.getElementById('examPreview').textContent = data.exam_content;
+            document.getElementById('answerPreview').textContent = data.answer_content;
+            
+            // 警告
+            if (data.warnings && data.warnings.length > 0) {
+                showWarning(data.warnings.join('<br>'));
+            }
+            
+            // 显示结果区域
+            document.getElementById('result').classList.add('active');
+        }
+        
+        // 下载试卷
+        document.getElementById('downloadExamBtn').addEventListener('click', () => {
+            if (examFile) {
+                window.location.href = '/download/' + examFile;
+            }
+        });
+        
+        // 下载答案
+        document.getElementById('downloadAnswerBtn').addEventListener('click', () => {
+            if (answerFile) {
+                window.location.href = '/download/' + answerFile;
+            }
+        });
+        
+        // 辅助函数
+        function showError(msg) {
+            const el = document.getElementById('error');
+            el.innerHTML = msg;
+            el.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        function showWarning(msg) {
+            const el = document.getElementById('warning');
+            el.innerHTML = msg;
+            el.style.display = 'block';
+        }
+        
+        function hideWarning() {
+            document.getElementById('warning').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
