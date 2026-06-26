@@ -1,0 +1,160 @@
+"""
+试卷助手 - 命令行入口
+"""
+
+import os
+import sys
+import yaml
+from typing import List
+
+# 添加src到路径
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from src.llm_client import create_llm_client
+from src.generator import QuestionGenerator
+from src.assembler import ScoreAssembler
+from src.exporter import MarkdownExporter
+from src.validator import ExamValidator
+
+
+def load_config() -> dict:
+    """加载配置文件"""
+    config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
+    with open(config_path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def get_knowledge_points() -> List[str]:
+    """获取用户输入的知识点"""
+    print("请输入知识点（每行一个，输入空行结束）：")
+    points = []
+    while True:
+        try:
+            line = input().strip()
+            if not line:
+                break
+            points.append(line)
+        except EOFError:
+            break
+    
+    if not points:
+        print("❌ 错误：请输入至少1个知识点")
+        sys.exit(1)
+    
+    if len(points) < 3:
+        print("⚠️  警告：建议输入10-50个知识点，当前只有{}个".format(len(points)))
+    elif len(points) > 100:
+        print("⚠️  警告：知识点过多（{}个），建议10-50个".format(len(points)))
+        points = points[:100]
+        print("已截取前100个知识点")
+    
+    return points
+
+
+def get_total_score(default: int = 100) -> int:
+    """获取总分"""
+    print(f"请输入总分（默认{default}）：")
+    try:
+        line = input().strip()
+        if not line:
+            return default
+        score = int(line)
+        if score <= 0:
+            print("❌ 错误：总分必须大于0")
+            sys.exit(1)
+        return score
+    except ValueError:
+        print("❌ 错误：总分必须是整数")
+        sys.exit(1)
+    except EOFError:
+        return default
+
+
+def main():
+    """主流程"""
+    print("=" * 60)
+    print("试卷助手 v1.0")
+    print("=" * 60)
+    print()
+    
+    # 1. 加载配置
+    config = load_config()
+    
+    # 2. 获取用户输入
+    knowledge_points = get_knowledge_points()
+    print(f"✅ 已输入{len(knowledge_points)}个知识点")
+    print()
+    
+    total_score = get_total_score(config["exam"]["default_total_score"])
+    print(f"✅ 总分：{total_score}分")
+    print()
+    
+    # 3. 创建LLM客户端
+    try:
+        llm_client = create_llm_client(config["api"])
+        print("✅ LLM客户端创建成功")
+    except Exception as e:
+        print(f"❌ 错误：{e}")
+        sys.exit(1)
+    
+    # 4. 生成题目
+    print("正在生成试卷，请稍候...")
+    generator = QuestionGenerator(llm_client)
+    question_types = [qt["type"] for qt in config["exam"]["question_types"]]
+    questions = generator.generate_questions(knowledge_points, question_types)
+    print(f"✅ 生成{len(questions)}道题目")
+    print()
+    
+    # 5. 分配分值
+    assembler = ScoreAssembler(total_score)
+    questions = assembler.assign_scores(questions, config["exam"]["question_types"])
+    print("✅ 分值分配完成")
+    print()
+    
+    # 6. 校验试卷
+    validator = ExamValidator()
+    result = validator.validate(questions, knowledge_points)
+    
+    print("📊 校验结果：")
+    print(f"   格式校验：{'✅ 通过' if not result['errors'] else '❌ 失败'}")
+    print(f"   知识点覆盖率：{result['coverage']['coverage_rate']:.0%}（{result['coverage']['covered']}/{result['coverage']['total']}）")
+    
+    if result["errors"]:
+        print("\n❌ 发现错误：")
+        for err in result["errors"]:
+            print(f"   - {err}")
+        sys.exit(1)
+    
+    if result["warnings"]:
+        print("\n⚠️  警告：")
+        for warn in result["warnings"]:
+            print(f"   - {warn}")
+    
+    print()
+    
+    # 7. 导出试卷
+    exporter = MarkdownExporter(config["output"]["directory"])
+    paths = exporter.export(questions, title="试卷")
+    
+    print("✅ 试卷生成完成！")
+    print(f"   试卷文件：{paths['exam_path']}")
+    print(f"   答案文件：{paths['answer_path']}")
+    print()
+    
+    # 8. 展示预览
+    print("=" * 60)
+    print("试卷预览（前3道题）：")
+    print("=" * 60)
+    for i, q in enumerate(questions[:3], 1):
+        print(f"{i}. {q['question']}（{q['score']}分）")
+        if q["type"] == "single_choice" and q.get("options"):
+            for opt in q["options"]:
+                print(f"   {opt}")
+        print()
+    
+    print("=" * 60)
+    print("✅ 完成！")
+
+
+if __name__ == "__main__":
+    main()

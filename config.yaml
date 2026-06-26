@@ -1,0 +1,26 @@
+api:
+  provider: qwen
+  model: qwen3.7-plus
+  api_key: ${QWEN_API_KEY}
+  timeout: 30
+  retry: 3
+
+exam:
+  default_total_score: 100
+  question_types:
+    - type: single_choice
+      score_per_question: 2
+      min_count: 10
+      max_count: 30
+    - type: true_false
+      score_per_question: 1
+      min_count: 5
+      max_count: 20
+    - type: short_answer
+      score_per_question: 10
+      min_count: 2
+      max_count: 5
+
+output:
+  directory: output
+  format: markdown
