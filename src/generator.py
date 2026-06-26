@@ -42,77 +42,23 @@ class QuestionGenerator:
         return questions
     
     def _build_prompt(self, knowledge_points: List[str], q_type: str) -> str:
-        """构建prompt"""
-        kp_text = "\n".join([f"- {kp}" for kp in knowledge_points])
+        """构建prompt（精简版，减少token消耗）"""
+        kp_text = "、".join(knowledge_points[:5])  # 限制知识点数量
         
         if q_type == "single_choice":
-            return f"""请根据以下知识点生成5道单选题。
-
-知识点：
-{kp_text}
-
-要求：
-1. 每道题必须有4个选项（A/B/C/D）
-2. 只有一个正确答案
-3. 题目要覆盖不同知识点
-4. 严格按以下JSON格式输出，不要添加其他内容：
-
-```json
-[
-  {{
-    "question": "题目内容",
-    "options": ["A. 选项A", "B. 选项B", "C. 选项C", "D. 选项D"],
-    "answer": "A"
-  }}
-]
-```
-
-请生成5道题："""
+            return f"""根据知识点出2道单选题。
+知识点：{kp_text}
+输出JSON格式：[{{"question":"题目","options":["A.x","B.x","C.x","D.x"],"answer":"A"}}]"""
 
         elif q_type == "true_false":
-            return f"""请根据以下知识点生成5道判断题。
-
-知识点：
-{kp_text}
-
-要求：
-1. 每道题只能判断"对"或"错"
-2. 答案要准确
-3. 题目要覆盖不同知识点
-4. 严格按以下JSON格式输出，不要添加其他内容：
-
-```json
-[
-  {{
-    "question": "题目内容",
-    "answer": "对"
-  }}
-]
-```
-
-请生成5道题："""
+            return f"""根据知识点出2道判断题。
+知识点：{kp_text}
+输出JSON格式：[{{"question":"题目","answer":"对"}}]"""
 
         elif q_type == "short_answer":
-            return f"""请根据以下知识点生成2道简答题。
-
-知识点：
-{kp_text}
-
-要求：
-1. 题目要有深度，考察理解
-2. 答案要包含关键知识点
-3. 严格按以下JSON格式输出，不要添加其他内容：
-
-```json
-[
-  {{
-    "question": "题目内容",
-    "answer": "参考答案"
-  }}
-]
-```
-
-请生成2道题："""
+            return f"""根据知识点出1道简答题。
+知识点：{kp_text}
+输出JSON格式：[{{"question":"题目","answer":"答案"}}]"""
         
         return ""
     
