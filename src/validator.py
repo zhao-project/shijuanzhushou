@@ -9,7 +9,8 @@ from typing import List, Dict, Set
 class ExamValidator:
     """试卷校验器"""
     
-    def validate(self, questions: List[Dict], knowledge_points: List[str]) -> Dict:
+    def validate(self, questions: List[Dict], knowledge_points: List[str], 
+                 expected_total_score: int = 100) -> Dict:
         """
         校验试卷
         
@@ -28,7 +29,7 @@ class ExamValidator:
         self._validate_format(questions, errors)
         
         # 2. 分值校验
-        self._validate_scores(questions, errors)
+        self._validate_scores(questions, errors, expected_total_score)
         
         # 3. 去重检测
         self._validate_duplicates(questions, warnings)
@@ -74,11 +75,12 @@ class ExamValidator:
             if q.get("score", 0) <= 0:
                 errors.append(f"题目{i}：分值必须大于0")
     
-    def _validate_scores(self, questions: List[Dict], errors: List[str]):
+    def _validate_scores(self, questions: List[Dict], errors: List[str], 
+                         expected_total: int):
         """分值校验"""
         total = sum(q.get("score", 0) for q in questions)
-        if total != 100:
-            errors.append(f"分值总和={total}，不等于100")
+        if total != expected_total:
+            errors.append(f"分值总和={total}，不等于{expected_total}")
     
     def _validate_duplicates(self, questions: List[Dict], warnings: List[str]):
         """去重检测（简单版本：完全相同的题目）"""

@@ -5,6 +5,8 @@ AI出题模块
 
 from typing import List, Dict
 from .llm_client import LLMClient
+import json
+import re
 
 
 class QuestionGenerator:
@@ -53,16 +55,17 @@ class QuestionGenerator:
 1. 每道题必须有4个选项（A/B/C/D）
 2. 只有一个正确答案
 3. 题目要覆盖不同知识点
-4. 输出格式：
+4. 严格按以下JSON格式输出，不要添加其他内容：
 
-题目1：[题目内容]
-A. [选项A]
-B. [选项B]
-C. [选项C]
-D. [选项D]
-答案：[A/B/C/D]
-
----
+```json
+[
+  {{
+    "question": "题目内容",
+    "options": ["A. 选项A", "B. 选项B", "C. 选项C", "D. 选项D"],
+    "answer": "A"
+  }}
+]
+```
 
 请生成5道题："""
 
@@ -76,12 +79,16 @@ D. [选项D]
 1. 每道题只能判断"对"或"错"
 2. 答案要准确
 3. 题目要覆盖不同知识点
-4. 输出格式：
+4. 严格按以下JSON格式输出，不要添加其他内容：
 
-题目1：[题目内容]
-答案：[对/错]
-
----
+```json
+[
+  {{
+    "question": "题目内容",
+    "answer": "对"
+  }}
+]
+```
 
 请生成5道题："""
 
@@ -94,12 +101,16 @@ D. [选项D]
 要求：
 1. 题目要有深度，考察理解
 2. 答案要包含关键知识点
-3. 输出格式：
+3. 严格按以下JSON格式输出，不要添加其他内容：
 
-题目1：[题目内容]
-答案：[参考答案]
-
----
+```json
+[
+  {{
+    "question": "题目内容",
+    "answer": "参考答案"
+  }}
+]
+```
 
 请生成2道题："""
         
@@ -109,7 +120,36 @@ D. [选项D]
         """解析AI响应"""
         questions = []
         
-        # 简单解析逻辑（后续优化）
+        # 尝试JSON解析
+        try:
+            # 提取JSON部分
+            json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(1)
+            else:
+                json_str = response
+            
+            parsed_data = json.loads(json_str)
+            
+            for item in parsed_data:
+                question = {
+                    "type": q_type,
+                    "question": item.get("question", ""),
+                    "options": item.get("options", []),
+                    "answer": item.get("answer", ""),
+                    "score": 0
+                }
+                questions.append(question)
+                
+        except (json.JSONDecodeError, KeyError) as e:
+            # JSON解析失败，回退到文本解析
+            questions = self._parse_text_response(response, q_type)
+        
+        return questions
+    
+    def _parse_text_response(self, response: str, q_type: str) -> List[Dict]:
+        """文本解析（备用方案）"""
+        questions = []
         lines = response.strip().split("\n")
         current_q = None
         

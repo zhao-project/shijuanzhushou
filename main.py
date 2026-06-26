@@ -6,6 +6,7 @@ import os
 import sys
 import yaml
 from typing import List
+from pathlib import Path
 
 # 添加src到路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -19,7 +20,7 @@ from src.validator import ExamValidator
 
 def load_config() -> dict:
     """加载配置文件"""
-    config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
+    config_path = Path(__file__).parent / "config.yaml"
     with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
@@ -89,10 +90,11 @@ def main():
     print(f"✅ 总分：{total_score}分")
     print()
     
-    # 3. 创建LLM客户端
+    # 3. 创建LLM客户端（从.env读取配置）
     try:
-        llm_client = create_llm_client(config["api"])
+        llm_client = create_llm_client()
         print("✅ LLM客户端创建成功")
+        print(f"   模型：{config.get('api', {}).get('model', 'qwen3.7-plus')}")
     except Exception as e:
         print(f"❌ 错误：{e}")
         sys.exit(1)
@@ -113,7 +115,7 @@ def main():
     
     # 6. 校验试卷
     validator = ExamValidator()
-    result = validator.validate(questions, knowledge_points)
+    result = validator.validate(questions, knowledge_points, total_score)
     
     print("📊 校验结果：")
     print(f"   格式校验：{'✅ 通过' if not result['errors'] else '❌ 失败'}")
@@ -151,6 +153,16 @@ def main():
             for opt in q["options"]:
                 print(f"   {opt}")
         print()
+    
+    # 9. 显示API用量（如果有）
+    if hasattr(llm_client, 'get_total_usage'):
+        usage = llm_client.get_total_usage()
+        print("=" * 60)
+        print(f"📊 API用量统计：")
+        print(f"   调用次数：{usage['calls']}")
+        print(f"   总Token：{usage['total_tokens']}")
+        print(f"   输入Token：{usage['total_prompt_tokens']}")
+        print(f"   输出Token：{usage['total_completion_tokens']}")
     
     print("=" * 60)
     print("✅ 完成！")

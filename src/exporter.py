@@ -46,6 +46,11 @@ class MarkdownExporter:
         """生成试卷Markdown"""
         lines = [f"# {title}\n"]
         
+        # 计算总分
+        total_score = sum(q["score"] for q in questions)
+        lines.append(f"**总分：{total_score}分**\n")
+        lines.append("---\n")
+        
         # 按题型分组
         questions_by_type = {}
         for q in questions:
@@ -71,7 +76,7 @@ class MarkdownExporter:
             
             # 计算该题型总分
             type_total = sum(q["score"] for q in qs)
-            lines.append(f"\n## {type_names.get(q_type, q_type)}（每题{qs[0]['score']}分，共{type_total}分）\n")
+            lines.append(f"\n## {type_name}（每题{qs[0]['score']}分，共{type_total}分）\n")
             
             for q in qs:
                 lines.append(f"{question_num}. {q['question']}（{q['score']}分）")
@@ -88,6 +93,7 @@ class MarkdownExporter:
     def _generate_answer_markdown(self, questions: List[Dict], title: str) -> str:
         """生成答案Markdown"""
         lines = [f"# {title} - 答案\n"]
+        lines.append("---\n")
         
         # 按题型分组
         questions_by_type = {}

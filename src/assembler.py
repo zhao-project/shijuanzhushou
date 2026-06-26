@@ -32,42 +32,24 @@ class ScoreAssembler:
                 questions_by_type[q_type] = []
             questions_by_type[q_type].append(q)
         
-        # 计算每种题型应该分配的分值
-        type_scores = self._calculate_type_scores(
-            questions_by_type, 
-            question_config
-        )
+        # 构建配置映射
+        config_map = {c["type"]: c for c in question_config}
         
         # 为每道题分配分值
         for q_type, qs in questions_by_type.items():
-            score_per_question = type_scores.get(q_type, 0)
-            for q in qs:
-                q["score"] = score_per_question
+            if q_type in config_map:
+                score_per_question = config_map[q_type]["score_per_question"]
+                for q in qs:
+                    q["score"] = score_per_question
         
-        # 验证总分
+        # 计算当前总分
         actual_total = sum(q["score"] for q in questions)
+        
+        # 调整分值使总分等于目标值
         if actual_total != self.total_score:
-            # 调整最后一道题的分值
             diff = self.total_score - actual_total
+            # 调整最后一道题的分值
             if questions:
                 questions[-1]["score"] += diff
         
         return questions
-    
-    def _calculate_type_scores(self, questions_by_type: Dict[str, List],
-                               question_config: List[Dict]) -> Dict[str, int]:
-        """计算每种题型的分值"""
-        type_scores = {}
-        
-        # 构建配置映射
-        config_map = {c["type"]: c for c in question_config}
-        
-        # 计算总分中每种题型应该占的比例
-        total_questions = sum(len(qs) for qs in questions_by_type.values())
-        
-        for q_type, qs in questions_by_type.items():
-            if q_type in config_map:
-                score_per_question = config_map[q_type]["score_per_question"]
-                type_scores[q_type] = score_per_question
-        
-        return type_scores
